@@ -35,7 +35,7 @@
       var cwd = '/';
       return {
         title: 'browser',
-        version: 'v0.10.32',
+        version: 'v0.10.26',
         browser: true,
         env: {},
         argv: [],
@@ -3104,7 +3104,7 @@
             this._sourcesContents = {};
           }
           this._sourcesContents[util.toSetString(source)] = aSourceContent;
-        } else if (this._sourcesContents) {
+        } else {
           delete this._sourcesContents[util.toSetString(source)];
           if (Object.keys(this._sourcesContents).length === 0) {
             this._sourcesContents = null;
@@ -3141,7 +3141,7 @@
               }
               mapping.originalLine = original.line;
               mapping.originalColumn = original.column;
-              if (original.name != null) {
+              if (original.name != null && mapping.name != null) {
                 mapping.name = original.name;
               }
             }
@@ -3343,7 +3343,7 @@
         } while (vlq > 0);
         return encoded;
       };
-      exports.decode = function base64VLQ_decode(aStr, aOutParam) {
+      exports.decode = function base64VLQ_decode(aStr) {
         var i = 0;
         var strLen = aStr.length;
         var result = 0;
@@ -3359,8 +3359,10 @@
           result = result + (digit << shift);
           shift += VLQ_BASE_SHIFT;
         } while (continuation);
-        aOutParam.value = fromVLQSigned(result);
-        aOutParam.rest = aStr.slice(i);
+        return {
+          value: fromVLQSigned(result),
+          rest: aStr.slice(i)
+        };
       };
     });
   });
@@ -3461,10 +3463,6 @@
           return this.__originalMappings;
         }
       });
-      SourceMapConsumer.prototype._nextCharIsMappingSeparator = function SourceMapConsumer_nextCharIsMappingSeparator(aStr) {
-        var c = aStr.charAt(0);
-        return c === ';' || c === ',';
-      };
       SourceMapConsumer.prototype._parseMappings = function SourceMapConsumer_parseMappings(aStr, aSourceRoot) {
         var generatedLine = 1;
         var previousGeneratedColumn = 0;
@@ -3472,9 +3470,10 @@
         var previousOriginalColumn = 0;
         var previousSource = 0;
         var previousName = 0;
+        var mappingSeparator = /^[,;]/;
         var str = aStr;
-        var temp = {};
         var mapping;
+        var temp;
         while (str.length > 0) {
           if (str.charAt(0) === ';') {
             generatedLine++;
@@ -3485,32 +3484,32 @@
           } else {
             mapping = {};
             mapping.generatedLine = generatedLine;
-            base64VLQ.decode(str, temp);
+            temp = base64VLQ.decode(str);
             mapping.generatedColumn = previousGeneratedColumn + temp.value;
             previousGeneratedColumn = mapping.generatedColumn;
             str = temp.rest;
-            if (str.length > 0 && !this._nextCharIsMappingSeparator(str)) {
-              base64VLQ.decode(str, temp);
+            if (str.length > 0 && !mappingSeparator.test(str.charAt(0))) {
+              temp = base64VLQ.decode(str);
               mapping.source = this._sources.at(previousSource + temp.value);
               previousSource += temp.value;
               str = temp.rest;
-              if (str.length === 0 || this._nextCharIsMappingSeparator(str)) {
+              if (str.length === 0 || mappingSeparator.test(str.charAt(0))) {
                 throw new Error('Found a source, but no line and column');
               }
-              base64VLQ.decode(str, temp);
+              temp = base64VLQ.decode(str);
               mapping.originalLine = previousOriginalLine + temp.value;
               previousOriginalLine = mapping.originalLine;
               mapping.originalLine += 1;
               str = temp.rest;
-              if (str.length === 0 || this._nextCharIsMappingSeparator(str)) {
+              if (str.length === 0 || mappingSeparator.test(str.charAt(0))) {
                 throw new Error('Found a source and line, but no column');
               }
-              base64VLQ.decode(str, temp);
+              temp = base64VLQ.decode(str);
               mapping.originalColumn = previousOriginalColumn + temp.value;
               previousOriginalColumn = mapping.originalColumn;
               str = temp.rest;
-              if (str.length > 0 && !this._nextCharIsMappingSeparator(str)) {
-                base64VLQ.decode(str, temp);
+              if (str.length > 0 && !mappingSeparator.test(str.charAt(0))) {
+                temp = base64VLQ.decode(str);
                 mapping.name = this._names.at(previousName + temp.value);
                 previousName += temp.value;
                 str = temp.rest;
@@ -3952,7 +3951,58 @@
       }
     }(this, function (exports) {
       'use strict';
-      var Syntax, isArray, VisitorOption, VisitorKeys, objectCreate, objectKeys, BREAK, SKIP, REMOVE;
+      var Syntax, isArray, VisitorOption, VisitorKeys, BREAK, SKIP;
+      Syntax = {
+        AssignmentExpression: 'AssignmentExpression',
+        ArrayExpression: 'ArrayExpression',
+        ArrayPattern: 'ArrayPattern',
+        ArrowFunctionExpression: 'ArrowFunctionExpression',
+        BlockStatement: 'BlockStatement',
+        BinaryExpression: 'BinaryExpression',
+        BreakStatement: 'BreakStatement',
+        CallExpression: 'CallExpression',
+        CatchClause: 'CatchClause',
+        ClassBody: 'ClassBody',
+        ClassDeclaration: 'ClassDeclaration',
+        ClassExpression: 'ClassExpression',
+        ConditionalExpression: 'ConditionalExpression',
+        ContinueStatement: 'ContinueStatement',
+        DebuggerStatement: 'DebuggerStatement',
+        DirectiveStatement: 'DirectiveStatement',
+        DoWhileStatement: 'DoWhileStatement',
+        EmptyStatement: 'EmptyStatement',
+        ExpressionStatement: 'ExpressionStatement',
+        ForStatement: 'ForStatement',
+        ForInStatement: 'ForInStatement',
+        FunctionDeclaration: 'FunctionDeclaration',
+        FunctionExpression: 'FunctionExpression',
+        Identifier: 'Identifier',
+        IfStatement: 'IfStatement',
+        Literal: 'Literal',
+        LabeledStatement: 'LabeledStatement',
+        LogicalExpression: 'LogicalExpression',
+        MemberExpression: 'MemberExpression',
+        MethodDefinition: 'MethodDefinition',
+        NewExpression: 'NewExpression',
+        ObjectExpression: 'ObjectExpression',
+        ObjectPattern: 'ObjectPattern',
+        Program: 'Program',
+        Property: 'Property',
+        ReturnStatement: 'ReturnStatement',
+        SequenceExpression: 'SequenceExpression',
+        SwitchStatement: 'SwitchStatement',
+        SwitchCase: 'SwitchCase',
+        ThisExpression: 'ThisExpression',
+        ThrowStatement: 'ThrowStatement',
+        TryStatement: 'TryStatement',
+        UnaryExpression: 'UnaryExpression',
+        UpdateExpression: 'UpdateExpression',
+        VariableDeclaration: 'VariableDeclaration',
+        VariableDeclarator: 'VariableDeclarator',
+        WhileStatement: 'WhileStatement',
+        WithStatement: 'WithStatement',
+        YieldExpression: 'YieldExpression'
+      };
       function ignoreJSHintError() {
       }
       isArray = Array.isArray;
@@ -4018,94 +4068,6 @@
         return i;
       }
       ignoreJSHintError(lowerBound);
-      objectCreate = Object.create || function () {
-        function F() {
-        }
-        return function (o) {
-          F.prototype = o;
-          return new F;
-        };
-      }();
-      objectKeys = Object.keys || function (o) {
-        var keys = [], key;
-        for (key in o) {
-          keys.push(key);
-        }
-        return keys;
-      };
-      function extend(to, from) {
-        objectKeys(from).forEach(function (key) {
-          to[key] = from[key];
-        });
-        return to;
-      }
-      Syntax = {
-        AssignmentExpression: 'AssignmentExpression',
-        ArrayExpression: 'ArrayExpression',
-        ArrayPattern: 'ArrayPattern',
-        ArrowFunctionExpression: 'ArrowFunctionExpression',
-        BlockStatement: 'BlockStatement',
-        BinaryExpression: 'BinaryExpression',
-        BreakStatement: 'BreakStatement',
-        CallExpression: 'CallExpression',
-        CatchClause: 'CatchClause',
-        ClassBody: 'ClassBody',
-        ClassDeclaration: 'ClassDeclaration',
-        ClassExpression: 'ClassExpression',
-        ComprehensionBlock: 'ComprehensionBlock',
-        ComprehensionExpression: 'ComprehensionExpression',
-        ConditionalExpression: 'ConditionalExpression',
-        ContinueStatement: 'ContinueStatement',
-        DebuggerStatement: 'DebuggerStatement',
-        DirectiveStatement: 'DirectiveStatement',
-        DoWhileStatement: 'DoWhileStatement',
-        EmptyStatement: 'EmptyStatement',
-        ExportBatchSpecifier: 'ExportBatchSpecifier',
-        ExportDeclaration: 'ExportDeclaration',
-        ExportSpecifier: 'ExportSpecifier',
-        ExpressionStatement: 'ExpressionStatement',
-        ForStatement: 'ForStatement',
-        ForInStatement: 'ForInStatement',
-        ForOfStatement: 'ForOfStatement',
-        FunctionDeclaration: 'FunctionDeclaration',
-        FunctionExpression: 'FunctionExpression',
-        GeneratorExpression: 'GeneratorExpression',
-        Identifier: 'Identifier',
-        IfStatement: 'IfStatement',
-        ImportDeclaration: 'ImportDeclaration',
-        ImportDefaultSpecifier: 'ImportDefaultSpecifier',
-        ImportNamespaceSpecifier: 'ImportNamespaceSpecifier',
-        ImportSpecifier: 'ImportSpecifier',
-        Literal: 'Literal',
-        LabeledStatement: 'LabeledStatement',
-        LogicalExpression: 'LogicalExpression',
-        MemberExpression: 'MemberExpression',
-        MethodDefinition: 'MethodDefinition',
-        ModuleSpecifier: 'ModuleSpecifier',
-        NewExpression: 'NewExpression',
-        ObjectExpression: 'ObjectExpression',
-        ObjectPattern: 'ObjectPattern',
-        Program: 'Program',
-        Property: 'Property',
-        ReturnStatement: 'ReturnStatement',
-        SequenceExpression: 'SequenceExpression',
-        SpreadElement: 'SpreadElement',
-        SwitchStatement: 'SwitchStatement',
-        SwitchCase: 'SwitchCase',
-        TaggedTemplateExpression: 'TaggedTemplateExpression',
-        TemplateElement: 'TemplateElement',
-        TemplateLiteral: 'TemplateLiteral',
-        ThisExpression: 'ThisExpression',
-        ThrowStatement: 'ThrowStatement',
-        TryStatement: 'TryStatement',
-        UnaryExpression: 'UnaryExpression',
-        UpdateExpression: 'UpdateExpression',
-        VariableDeclaration: 'VariableDeclaration',
-        VariableDeclarator: 'VariableDeclarator',
-        WhileStatement: 'WhileStatement',
-        WithStatement: 'WithStatement',
-        YieldExpression: 'YieldExpression'
-      };
       VisitorKeys = {
         AssignmentExpression: [
           'left',
@@ -4144,15 +4106,6 @@
           'body',
           'superClass'
         ],
-        ComprehensionBlock: [
-          'left',
-          'right'
-        ],
-        ComprehensionExpression: [
-          'blocks',
-          'filter',
-          'body'
-        ],
         ConditionalExpression: [
           'test',
           'consequent',
@@ -4166,16 +4119,6 @@
           'test'
         ],
         EmptyStatement: [],
-        ExportBatchSpecifier: [],
-        ExportDeclaration: [
-          'declaration',
-          'specifiers',
-          'source'
-        ],
-        ExportSpecifier: [
-          'id',
-          'name'
-        ],
         ExpressionStatement: ['expression'],
         ForStatement: [
           'init',
@@ -4207,26 +4150,11 @@
           'rest',
           'body'
         ],
-        GeneratorExpression: [
-          'blocks',
-          'filter',
-          'body'
-        ],
         Identifier: [],
         IfStatement: [
           'test',
           'consequent',
           'alternate'
-        ],
-        ImportDeclaration: [
-          'specifiers',
-          'source'
-        ],
-        ImportDefaultSpecifier: ['id'],
-        ImportNamespaceSpecifier: ['id'],
-        ImportSpecifier: [
-          'id',
-          'name'
         ],
         Literal: [],
         LabeledStatement: [
@@ -4245,7 +4173,6 @@
           'key',
           'value'
         ],
-        ModuleSpecifier: [],
         NewExpression: [
           'callee',
           'arguments'
@@ -4259,7 +4186,6 @@
         ],
         ReturnStatement: ['argument'],
         SequenceExpression: ['expressions'],
-        SpreadElement: ['argument'],
         SwitchStatement: [
           'discriminant',
           'cases'
@@ -4267,15 +4193,6 @@
         SwitchCase: [
           'test',
           'consequent'
-        ],
-        TaggedTemplateExpression: [
-          'tag',
-          'quasi'
-        ],
-        TemplateElement: [],
-        TemplateLiteral: [
-          'quasis',
-          'expressions'
         ],
         ThisExpression: [],
         ThrowStatement: ['argument'],
@@ -4305,11 +4222,9 @@
       };
       BREAK = {};
       SKIP = {};
-      REMOVE = {};
       VisitorOption = {
         Break: BREAK,
-        Skip: SKIP,
-        Remove: REMOVE
+        Skip: SKIP
       };
       function Reference(parent, key) {
         this.parent = parent;
@@ -4317,15 +4232,6 @@
       }
       Reference.prototype.replace = function replace(node) {
         this.parent[this.key] = node;
-      };
-      Reference.prototype.remove = function remove() {
-        if (isArray(this.parent)) {
-          this.parent.splice(this.key, 1);
-          return true;
-        } else {
-          this.replace(null);
-          return false;
-        }
       };
       function Element(node, path, wrap, ref) {
         this.node = node;
@@ -4389,9 +4295,6 @@
       Controller.prototype['break'] = function () {
         this.notify(BREAK);
       };
-      Controller.prototype.remove = function () {
-        this.notify(REMOVE);
-      };
       Controller.prototype.__initialize = function (root, visitor) {
         this.visitor = visitor;
         this.root = root;
@@ -4399,21 +4302,7 @@
         this.__leavelist = [];
         this.__current = null;
         this.__state = null;
-        this.__fallback = visitor.fallback === 'iteration';
-        this.__keys = VisitorKeys;
-        if (visitor.keys) {
-          this.__keys = extend(objectCreate(this.__keys), visitor.keys);
-        }
       };
-      function isNode(node) {
-        if (node == null) {
-          return false;
-        }
-        return typeof node === 'object' && typeof node.type === 'string';
-      }
-      function isProperty(nodeType, key) {
-        return (nodeType === Syntax.ObjectExpression || nodeType === Syntax.ObjectPattern) && 'properties' === key;
-      }
       Controller.prototype.traverse = function traverse(root, visitor) {
         var worklist, leavelist, element, node, nodeType, ret, key, current, current2, candidates, candidate, sentinel;
         this.__initialize(root, visitor);
@@ -4444,14 +4333,7 @@
             }
             node = element.node;
             nodeType = element.wrap || node.type;
-            candidates = this.__keys[nodeType];
-            if (!candidates) {
-              if (this.__fallback) {
-                candidates = objectKeys(node);
-              } else {
-                throw new Error('Unknown node type ' + nodeType + '.');
-              }
-            }
+            candidates = VisitorKeys[nodeType];
             current = candidates.length;
             while ((current -= 1) >= 0) {
               key = candidates[current];
@@ -4459,48 +4341,33 @@
               if (!candidate) {
                 continue;
               }
-              if (isArray(candidate)) {
-                current2 = candidate.length;
-                while ((current2 -= 1) >= 0) {
-                  if (!candidate[current2]) {
-                    continue;
-                  }
-                  if (isProperty(nodeType, candidates[current])) {
-                    element = new Element(candidate[current2], [
-                      key,
-                      current2
-                    ], 'Property', null);
-                  } else if (isNode(candidate[current2])) {
-                    element = new Element(candidate[current2], [
-                      key,
-                      current2
-                    ], null, null);
-                  } else {
-                    continue;
-                  }
-                  worklist.push(element);
-                }
-              } else if (isNode(candidate)) {
+              if (!isArray(candidate)) {
                 worklist.push(new Element(candidate, key, null, null));
+                continue;
+              }
+              current2 = candidate.length;
+              while ((current2 -= 1) >= 0) {
+                if (!candidate[current2]) {
+                  continue;
+                }
+                if ((nodeType === Syntax.ObjectExpression || nodeType === Syntax.ObjectPattern) && 'properties' === candidates[current]) {
+                  element = new Element(candidate[current2], [
+                    key,
+                    current2
+                  ], 'Property', null);
+                } else {
+                  element = new Element(candidate[current2], [
+                    key,
+                    current2
+                  ], null, null);
+                }
+                worklist.push(element);
               }
             }
           }
         }
       };
       Controller.prototype.replace = function replace(root, visitor) {
-        function removeElem() {
-          var i, nextElem, parent;
-          if (element.ref.remove()) {
-            parent = element.ref.parent;
-            for (i = 1; i < worklist.length; i++) {
-              nextElem = worklist[i];
-              if (nextElem === sentinel || nextElem.ref.parent !== parent) {
-                break;
-              }
-              nextElem.path[nextElem.path.length - 1] = --nextElem.ref.key;
-            }
-          }
-        }
         var worklist, leavelist, node, nodeType, target, element, current, current2, candidates, candidate, sentinel, outer, key;
         this.__initialize(root, visitor);
         sentinel = {};
@@ -4515,11 +4382,8 @@
           if (element === sentinel) {
             element = leavelist.pop();
             target = this.__execute(visitor.leave, element);
-            if (target !== undefined && target !== BREAK && target !== SKIP && target !== REMOVE) {
+            if (target !== undefined && target !== BREAK && target !== SKIP) {
               element.ref.replace(target);
-            }
-            if (this.__state === REMOVE || target === REMOVE) {
-              removeElem();
             }
             if (this.__state === BREAK || target === BREAK) {
               return outer.root;
@@ -4527,13 +4391,9 @@
             continue;
           }
           target = this.__execute(visitor.enter, element);
-          if (target !== undefined && target !== BREAK && target !== SKIP && target !== REMOVE) {
+          if (target !== undefined && target !== BREAK && target !== SKIP) {
             element.ref.replace(target);
             element.node = target;
-          }
-          if (this.__state === REMOVE || target === REMOVE) {
-            removeElem();
-            element.node = null;
           }
           if (this.__state === BREAK || target === BREAK) {
             return outer.root;
@@ -4548,14 +4408,7 @@
             continue;
           }
           nodeType = element.wrap || node.type;
-          candidates = this.__keys[nodeType];
-          if (!candidates) {
-            if (this.__fallback) {
-              candidates = objectKeys(node);
-            } else {
-              throw new Error('Unknown node type ' + nodeType + '.');
-            }
-          }
+          candidates = VisitorKeys[nodeType];
           current = candidates.length;
           while ((current -= 1) >= 0) {
             key = candidates[current];
@@ -4563,29 +4416,27 @@
             if (!candidate) {
               continue;
             }
-            if (isArray(candidate)) {
-              current2 = candidate.length;
-              while ((current2 -= 1) >= 0) {
-                if (!candidate[current2]) {
-                  continue;
-                }
-                if (isProperty(nodeType, candidates[current])) {
-                  element = new Element(candidate[current2], [
-                    key,
-                    current2
-                  ], 'Property', new Reference(candidate, current2));
-                } else if (isNode(candidate[current2])) {
-                  element = new Element(candidate[current2], [
-                    key,
-                    current2
-                  ], null, new Reference(candidate, current2));
-                } else {
-                  continue;
-                }
-                worklist.push(element);
-              }
-            } else if (isNode(candidate)) {
+            if (!isArray(candidate)) {
               worklist.push(new Element(candidate, key, null, new Reference(node, key)));
+              continue;
+            }
+            current2 = candidate.length;
+            while ((current2 -= 1) >= 0) {
+              if (!candidate[current2]) {
+                continue;
+              }
+              if (nodeType === Syntax.ObjectExpression && 'properties' === candidates[current]) {
+                element = new Element(candidate[current2], [
+                  key,
+                  current2
+                ], 'Property', new Reference(candidate, current2));
+              } else {
+                element = new Element(candidate[current2], [
+                  key,
+                  current2
+                ], null, new Reference(candidate, current2));
+              }
+              worklist.push(element);
             }
           }
         }

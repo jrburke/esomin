@@ -1,6 +1,1 @@
-var start = 'something';
-function talk(a) {
-    'use strict';
-    print('SIMPLE TEST OK: ' + a + ' ' + start);
-}
-talk('hello');
+var start='something';function talk(other){'use strict';print('simple OK: '+other+' '+start);}talk('hello');

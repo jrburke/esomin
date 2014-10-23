@@ -1,6 +1,14 @@
 try {
-  load('esmangle.js');
-  load('escodegen.browser.js');
+  var useReflector = false;
+
+  if (useReflector) {
+    // load('esmangle.fixed.js');
+    load('escodegen.browser.fixed.js');
+  } else {
+    load('esprima.js');
+    // load('esmangle.js');
+    load('escodegen.browser.js');
+  }
 
   Components.utils['import']('resource://gre/modules/FileUtils.jsm');
 
@@ -126,23 +134,30 @@ try {
     }
   }
 
-  var filePath = arguments[0],
-      outPath = arguments[1];
+  var filePath = cwd() + '/' + arguments[0],
+      outPath = arguments[1] && cwd() + '/' + arguments[1];
 
   if (!filePath) {
     throw new Error('Pass file name to minify');
   }
 
-  // print('File path is: ' + filePath);
+  //print('File path is: ' + filePath);
 
   var fileContents = readFile(filePath);
-  var ast = Reflect.parse(fileContents);
-  // print(JSON.stringify(ast, null, '  '));
+  var ast = (useReflector ? Reflect : esprima).parse(fileContents);
 
-  var result = esmangle.mangle(ast);
-  // print(JSON.stringify(result, null, '  '));
+  //print('REFLECT AST:\n' + JSON.stringify(ast, null, '  '));
 
-  var minified = escodegen.generate(result);
+  // Having trouble with 1.0.1 of esmangle, and escodgen seems to be able to
+  // do some shortening on its own.
+  var result = ast; //esmangle.mangle(ast);
+  //print('ESMANGLE RESULT:\n' + JSON.stringify(result, null, '  '));
+
+  var minified = escodegen.generate(result, {
+    format: {
+      compact: true
+    }
+  });
 
   if (outPath) {
     saveFile(outPath, minified);
