@@ -1,8 +1,10 @@
-# esumin
+# esomin
 
 Experiments in minifying with files that use some es5+ features, mainly for mozilla-based code, specifically, minifying Gaia apps.
 
-Ideally, can use the AST parse tree from Reflect, then convert to code that at a minimum just strips comments.
+Ideally, can use the AST parse tree from Reflect, then convert to code that at a minimum:
+
+* strips comments.
 
 Nice to have features:
 
@@ -16,7 +18,7 @@ Something that allows the following features:
 
 ## How to run tests
 
-    ESUMINXPC=/path/to/xpcshell ./test.sh
+    ESOMINXPC=/path/to/xpcshell ./test.sh
 
 Some basic tests, just confirms the files can be parsed and generated, and runs the generated file. The test just output strings, and current expectations for the output should look like this:
 
@@ -68,7 +70,4 @@ So, I switched to using the esprima/harmony branch for parsing, and no more disc
 
 I tried using esmangle, but it has problems, does not seem to be up to date with what esprima generates. I was using an actual release, 1.0.1. When trying to use its master, I could not generate a build locally from the cloned git repo. So skipping it for now, and just relying on escodegen.
 
-escodegen ends up stripping comments and there is a "compact" format that seems to do a basic minification, which is enough for gaia needs.
-
-
-
+So for now, just getting comment stripping.

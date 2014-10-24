@@ -3,8 +3,8 @@ set -e
 OUT=test/output
 
 runTest() {
-    $ESUMINXPC esumin.js test/$1.js $OUT/$1.js
-    $ESUMINXPC $OUT/$1.js
+    $ESOMINXPC esomin.js test/$1.js $OUT/$1.js
+    $ESOMINXPC $OUT/$1.js
 }
 
 runTest simple
